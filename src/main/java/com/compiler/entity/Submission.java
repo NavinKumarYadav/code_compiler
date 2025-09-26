@@ -1,9 +1,15 @@
 package com.compiler.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "submissions")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class Submission {
 
     @Id
