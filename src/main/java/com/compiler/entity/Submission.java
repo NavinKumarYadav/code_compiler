@@ -18,5 +18,12 @@ public class Submission {
 
     private String language;
 
+    @Column(columnDefinition = "Text")
+    private String sourceCode;
+    private String status;
+    private Integer runtimeMs;
+    private Integer memoryKb;
+
+
 
 }
