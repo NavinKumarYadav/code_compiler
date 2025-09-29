@@ -14,6 +14,7 @@ public class ProblemService {
     private ProblemRepository problemRepository;
 
     public List<Problem> getAll(){
+
         return problemRepository.findAll();
     }
     public Problem getById(Long id){
@@ -21,6 +22,7 @@ public class ProblemService {
                 .orElseThrow(() -> new RuntimeException("Problem not found"));
     }
     public Problem create(Problem p){
+
         return problemRepository.save(p);
     }
 
