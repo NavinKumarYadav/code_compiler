@@ -6,9 +6,11 @@ import com.compiler.entity.Submission;
 import com.compiler.entity.User;
 import com.compiler.repository.SubmissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
+@Service
 public class SubmissionService {
 
     @Autowired
