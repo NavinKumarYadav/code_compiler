@@ -13,6 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
+    @Bean
     public PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
     }
@@ -23,8 +24,7 @@ public class SecurityConfig {
         AuthenticationManagerBuilder authBuilder =
                 http.getSharedObject(AuthenticationManagerBuilder.class);
 
-        authBuilder.userDetailsService(userService::findByUsername)
-                .passwordEncoder(encoder);
+        authBuilder.userDetailsService(userService).passwordEncoder(encoder);
         return authBuilder.build();
     }
 
