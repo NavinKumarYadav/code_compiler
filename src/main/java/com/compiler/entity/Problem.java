@@ -16,8 +16,15 @@ public class Problem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String title;
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "Text")
     private String description;
+
+    @Column(columnDefinition = "Text")
+    private String input;
+
+    @Column(columnDefinition = "Text")
+    private String output;
+
     private Integer timeLimitMs;
     private Integer memoryLimitKb;
 

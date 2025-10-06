@@ -20,14 +20,17 @@ public class SubmissionController {
     public SubmissionResponse submit(@AuthenticationPrincipal UserDetails user,
                                      @RequestBody SubmissionRequest request){
         Submission s = service.submitCode(user.getUsername(), request);
-        return new SubmissionResponse(s.getId(),s.getStatus(),
-                s.getRuntimeMs(),s.getMemoryKb());
+        return mapToResponse(s);
     }
 
     @GetMapping("/{id}")
     public SubmissionResponse get(@PathVariable Long id){
         Submission s = service.getSubmission(id);
-        return new SubmissionResponse(s.getId(),s.getStatus(),
-                s.getRuntimeMs(),s.getMemoryKb());
+        return mapToResponse(s);
+    }
+    private SubmissionResponse mapToResponse(Submission s){
+        return new SubmissionResponse(
+                s.getId(), s.getStatus(),s.getRuntimeMs(),s.getMemoryKb()
+        );
     }
 }

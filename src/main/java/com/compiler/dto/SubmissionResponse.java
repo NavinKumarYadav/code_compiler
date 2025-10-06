@@ -1,5 +1,6 @@
 package com.compiler.dto;
 
+import com.compiler.entity.SubmissionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SubmissionResponse {
     private Long submissionId;
-    private String status;
+    private SubmissionStatus status;
     private Integer runtimeMs;
     private Integer memoryKb;
 }

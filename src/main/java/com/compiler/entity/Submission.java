@@ -26,7 +26,13 @@ public class Submission {
 
     @Column(columnDefinition = "Text")
     private String sourceCode;
-    private String status;
+
+    @Enumerated(EnumType.STRING)
+    private SubmissionStatus status;
+
+    @Column(length = 5000)
+    private String output;
+
     private Integer runtimeMs;
     private Integer memoryKb;
 
