@@ -4,6 +4,8 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -11,16 +13,24 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
-    private final String SECRET_KEY = "replace_with_a_long_secret_key";
-    private final long EXPIRATION = 1000 * 60 * 60;
+    @Value("${jwt.secret}")
+    private String secret;
 
-    private final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    @Value("${jwt.expiration}")
+    private long expiration;
+
+    private Key key;
+
+    @PostConstruct
+    public void inti(){
+        key = Keys.hmacShaKeyFor(secret.getBytes());
+    }
 
     public String generateToken(String username){
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
