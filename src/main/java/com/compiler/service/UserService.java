@@ -11,11 +11,15 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class UserService implements UserDetailsService {
-    @Autowired
-    private UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder){
+        this.userRepository=userRepository;
+        this.passwordEncoder=passwordEncoder;
+    }
 
     public User register(String username, String email, String password){
         User u = new User();
@@ -26,7 +30,10 @@ public class UserService implements UserDetailsService {
         return userRepository.save(u);
     }
 
-    @Override
+    public boolean existsByUsername(String username){
+        return userRepository.existsByUsername(username);
+    }
+
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException{
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
