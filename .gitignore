@@ -32,3 +32,18 @@ build/
 ### VS Code ###
 .vscode/
 /bin/
+
+# Application properties - DO NOT COMMIT
+src/main/resources/application.properties
+
+# Environment variables
+.env
+*.env
+!*.example
+
+# Local configuration files
+*.local
+
+# Logs
+logs/
+*.log
