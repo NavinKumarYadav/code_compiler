@@ -45,11 +45,13 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody AuthRequest authRequest){
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(authRequest.getUserName(), authRequest.getPassword())
+                    new UsernamePasswordAuthenticationToken(
+                            authRequest.getUserName(),
+                            authRequest.getPassword())
             );
             String token = jwtUtil.generateToken(authRequest.getUserName());
             return ResponseEntity.ok(new AuthResponse(token));
-        }catch (Exception ex){
+        }catch (Exception e){
             return ResponseEntity.status(401).body("Invalid username or password");
         }
     }

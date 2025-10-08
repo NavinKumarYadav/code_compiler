@@ -31,7 +31,7 @@ public class UserService implements UserDetailsService {
     }
 
     public boolean existsByUsername(String username){
-        return userRepository.existsByUsername(username);
+        return userRepository.findByUsername(username).isPresent();
     }
 
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException{
