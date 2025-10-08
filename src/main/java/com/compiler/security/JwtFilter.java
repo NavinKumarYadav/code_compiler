@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -32,7 +33,7 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
 
-    public JwtFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
+    public JwtFilter(JwtUtil jwtUtil, @Lazy UserDetailsService userDetailsService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
     }
@@ -49,7 +50,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String username=null;
         String jwtToken = null;
 
-        if(authHeader != null && authHeader.startsWith("BEARER_PREFIX")) {
+        if(authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
             jwtToken = authHeader.substring(BEARER_PREFIX.length());
             try{
                 username = jwtUtil.extractUsername(jwtToken);
