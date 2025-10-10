@@ -57,11 +57,16 @@ public class JwtUtil {
             throw new IllegalStateException(
                     "JWT secret key is not configured. Please set JWT_SECRET environment variable.");
         }
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(keyBytes);
+        try{
+            byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+            return Keys.hmacShaKeyFor(keyBytes);
+        }catch(Exception e){
+            return Keys.hmacShaKeyFor(secretKey.getBytes());
+        }
     }
 
     private Boolean isTokenExpired(String token){
+
         return extractExpiration(token).before(new Date());
     }
 
