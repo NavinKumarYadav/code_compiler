@@ -15,4 +15,11 @@ public class ExecutionResponse {
     private Double executionTime;
     private Double memoryUsed;
     private Boolean isCorrect;
+
+    public static ExecutionResponse error(String message){
+        ExecutionResponse response = new ExecutionResponse();
+        response.setError(message);
+        response.setStatus("Error");
+        return response;
+    }
 }
