@@ -52,7 +52,7 @@ public class Judge0Service {
         System.out.println("API Key present: " + (rapidApiKey != null && !rapidApiKey.isEmpty()));
         System.out.println("Judge0 URL: " + judge0BaseUrl);
         System.out.println("Language: " + request.getLanguage());
-        System.out.println("Code length: " + (request.getCode() != null ? request.getCode().length() : "NULL"));
+        System.out.println("Code: " + (request.getCode() != null ? request.getCode() : "NULL"));
 
         // Validate API key first
         if (rapidApiKey == null || rapidApiKey.trim().isEmpty()) {
@@ -65,31 +65,36 @@ public class Judge0Service {
         }
 
         Integer languageId = LANGUAGE_IDS.get(request.getLanguage());
+        System.out.println("Language ID resolved: " + languageId);
+
         if (request.getLanguage() == null || languageId == null) {
             return ExecutionResponse.error("Unsupported language: " + request.getLanguage());
         }
 
-        // Create submission
-        Judge0Submission submission = new Judge0Submission();
-        submission.source_code = request.getCode();
-        submission.language_id = languageId;
-        submission.stdin = request.getInput() != null ? request.getInput() : "";
+        // Create submission using Map to avoid serialization issues
+        Map<String, Object> submission = new HashMap<>();
+        submission.put("source_code", request.getCode());
+        submission.put("language_id", languageId);
+        submission.put("stdin", request.getInput() != null ? request.getInput() : "");
 
         if (request.getExpectedOutput() != null && !request.getExpectedOutput().trim().isEmpty()) {
-            submission.expected_output = request.getExpectedOutput();
+            submission.put("expected_output", request.getExpectedOutput());
         }
 
-        System.out.println("Final Submission - Language ID: " + submission.language_id);
+        System.out.println("Submission Map: " + submission);
 
-        // Setup headers - VERY IMPORTANT: Use exact headers Judge0 expects
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-RapidAPI-Key", rapidApiKey);
         headers.set("X-RapidAPI-Host", "judge0-ce.p.rapidapi.com");
 
-        HttpEntity<Judge0Submission> entity = new HttpEntity<>(submission, headers);
-
         try {
+            // Convert submission to JSON string first to debug
+            String submissionJson = objectMapper.writeValueAsString(submission);
+            System.out.println("JSON being sent: " + submissionJson);
+
+            HttpEntity<String> entity = new HttpEntity<>(submissionJson, headers);
+
             String submissionUrl = judge0BaseUrl + "/submissions?base64_encoded=false&wait=true";
             System.out.println("Making request to: " + submissionUrl);
 
@@ -118,6 +123,8 @@ public class Judge0Service {
                 return ExecutionResponse.error("Authentication failed. Please check your Judge0 API key.");
             } else if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
                 return ExecutionResponse.error("Rate limit exceeded. Please try again later.");
+            } else if (e.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
+                return ExecutionResponse.error("Invalid request format: " + e.getResponseBodyAsString());
             } else {
                 return ExecutionResponse.error("Judge0 API error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
             }
@@ -125,23 +132,6 @@ public class Judge0Service {
             System.out.println("ERROR: " + e.getMessage());
             e.printStackTrace();
             return ExecutionResponse.error("Execution failed: " + e.getMessage());
-        }
-    }
-
-    private static class Judge0Submission {
-        public String source_code;
-        public Integer language_id;
-        public String stdin;
-        public String expected_output;
-
-        @Override
-        public String toString() {
-            return "Judge0Submission{" +
-                    "source_code_length=" + (source_code != null ? source_code.length() : 0) +
-                    ", language_id=" + language_id +
-                    ", stdin='" + stdin + '\'' +
-                    ", expected_output='" + expected_output + '\'' +
-                    '}';
         }
     }
 
