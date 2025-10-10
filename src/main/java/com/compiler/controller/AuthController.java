@@ -1,6 +1,5 @@
 package com.compiler.controller;
 
-import com.compiler.dto.AuthRequest;
 import com.compiler.dto.AuthResponse;
 import com.compiler.dto.LoginRequest;
 import com.compiler.entity.User;

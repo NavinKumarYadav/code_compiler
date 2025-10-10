@@ -54,12 +54,10 @@ public class Judge0Service {
         System.out.println("Language: " + request.getLanguage());
         System.out.println("Code: " + (request.getCode() != null ? request.getCode() : "NULL"));
 
-        // Validate API key first
         if (rapidApiKey == null || rapidApiKey.trim().isEmpty()) {
             return ExecutionResponse.error("Judge0 API key is not configured");
         }
 
-        // Validate request
         if (request.getCode() == null || request.getCode().trim().isEmpty()) {
             return ExecutionResponse.error("Source code cannot be empty");
         }
@@ -71,7 +69,6 @@ public class Judge0Service {
             return ExecutionResponse.error("Unsupported language: " + request.getLanguage());
         }
 
-        // Create submission using Map to avoid serialization issues
         Map<String, Object> submission = new HashMap<>();
         submission.put("source_code", request.getCode());
         submission.put("language_id", languageId);
@@ -89,7 +86,6 @@ public class Judge0Service {
         headers.set("X-RapidAPI-Host", "judge0-ce.p.rapidapi.com");
 
         try {
-            // Convert submission to JSON string first to debug
             String submissionJson = objectMapper.writeValueAsString(submission);
             System.out.println("JSON being sent: " + submissionJson);
 
@@ -139,14 +135,12 @@ public class Judge0Service {
         ExecutionResponse result = new ExecutionResponse();
 
         if (response != null) {
-            // Handle stdout
             if (response.containsKey("stdout") && response.get("stdout") != null) {
                 result.setOutput(response.get("stdout").toString().trim());
             } else if (response.containsKey("compile_output") && response.get("compile_output") != null) {
                 result.setOutput(response.get("compile_output").toString().trim());
             }
 
-            // Handle stderr
             if (response.containsKey("stderr") && response.get("stderr") != null) {
                 String stderr = response.get("stderr").toString().trim();
                 if (!stderr.isEmpty()) {
@@ -154,7 +148,6 @@ public class Judge0Service {
                 }
             }
 
-            // Handle execution time
             if (response.containsKey("time") && response.get("time") != null) {
                 try {
                     result.setExecutionTime(Double.parseDouble(response.get("time").toString()));
@@ -163,7 +156,6 @@ public class Judge0Service {
                 }
             }
 
-            // Handle memory usage
             if (response.containsKey("memory") && response.get("memory") != null) {
                 try {
                     result.setMemoryUsed(Double.parseDouble(response.get("memory").toString()));
@@ -172,7 +164,6 @@ public class Judge0Service {
                 }
             }
 
-            // Handle status
             if (response.containsKey("status")) {
                 Object statusObj = response.get("status");
                 if (statusObj instanceof Map) {
@@ -183,13 +174,11 @@ public class Judge0Service {
                 }
             }
 
-            // Check if output matches expected output
             if (expectedOutput != null && !expectedOutput.isEmpty()) {
                 String actualOutput = result.getOutput() != null ? result.getOutput().trim() : "";
                 result.setIsCorrect(actualOutput.equals(expectedOutput.trim()));
             }
 
-            // If no status set, set a default
             if (result.getStatus() == null) {
                 result.setStatus("Completed");
             }
