@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -17,12 +18,18 @@ public class Judge0Service {
     @Value("${judge0.api.key}")
     private String rapidApiKey;
 
-    private final String JUDGE0_URL = "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true";
+    @Value("${judge0.api.url}")
+    private String judge0BaseUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     private final Map<String, Integer> LANGUAGE_IDS = createLanguageMap();
+
+    public Judge0Service(RestTemplate restTemplate, ObjectMapper objectMapper) {
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
 
     private Map<String, Integer> createLanguageMap() {
         Map<String, Integer> languages = new HashMap<>();
@@ -42,26 +49,39 @@ public class Judge0Service {
 
     public ExecutionResponse executeCode(ExecutionRequest request) {
         System.out.println("=== JUDGE0 DEBUG ===");
+        System.out.println("API Key present: " + (rapidApiKey != null && !rapidApiKey.isEmpty()));
+        System.out.println("Judge0 URL: " + judge0BaseUrl);
         System.out.println("Language: " + request.getLanguage());
         System.out.println("Code length: " + (request.getCode() != null ? request.getCode().length() : "NULL"));
-        System.out.println("Language ID: " + LANGUAGE_IDS.get(request.getLanguage()));
 
+        // Validate API key first
+        if (rapidApiKey == null || rapidApiKey.trim().isEmpty()) {
+            return ExecutionResponse.error("Judge0 API key is not configured");
+        }
+
+        // Validate request
         if (request.getCode() == null || request.getCode().trim().isEmpty()) {
             return ExecutionResponse.error("Source code cannot be empty");
         }
 
-        if (request.getLanguage() == null || !LANGUAGE_IDS.containsKey(request.getLanguage())) {
+        Integer languageId = LANGUAGE_IDS.get(request.getLanguage());
+        if (request.getLanguage() == null || languageId == null) {
             return ExecutionResponse.error("Unsupported language: " + request.getLanguage());
         }
 
+        // Create submission
         Judge0Submission submission = new Judge0Submission();
         submission.source_code = request.getCode();
-        submission.language_id = LANGUAGE_IDS.get(request.getLanguage());
+        submission.language_id = languageId;
         submission.stdin = request.getInput() != null ? request.getInput() : "";
-        submission.expected_output = request.getExpectedOutput();
 
-        System.out.println("Submission: " + submission);
+        if (request.getExpectedOutput() != null && !request.getExpectedOutput().trim().isEmpty()) {
+            submission.expected_output = request.getExpectedOutput();
+        }
 
+        System.out.println("Final Submission - Language ID: " + submission.language_id);
+
+        // Setup headers - VERY IMPORTANT: Use exact headers Judge0 expects
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-RapidAPI-Key", rapidApiKey);
@@ -70,14 +90,37 @@ public class Judge0Service {
         HttpEntity<Judge0Submission> entity = new HttpEntity<>(submission, headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    JUDGE0_URL, HttpMethod.POST, entity, Map.class);
+            String submissionUrl = judge0BaseUrl + "/submissions?base64_encoded=false&wait=true";
+            System.out.println("Making request to: " + submissionUrl);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    submissionUrl,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
 
             System.out.println("Response Status: " + response.getStatusCode());
-            System.out.println("Response Body: " + response.getBody());
+            System.out.println("Raw Response: " + response.getBody());
 
-            return mapToExecutionResponse(response.getBody(), request.getExpectedOutput());
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> responseBody = objectMapper.readValue(response.getBody(), Map.class);
+                return mapToExecutionResponse(responseBody, request.getExpectedOutput());
+            } else {
+                return ExecutionResponse.error("Unexpected response from Judge0: " + response.getStatusCode());
+            }
 
+        } catch (HttpClientErrorException e) {
+            System.out.println("HTTP Error: " + e.getStatusCode());
+            System.out.println("Error Response: " + e.getResponseBodyAsString());
+
+            if (e.getStatusCode() == HttpStatus.FORBIDDEN) {
+                return ExecutionResponse.error("Authentication failed. Please check your Judge0 API key.");
+            } else if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+                return ExecutionResponse.error("Rate limit exceeded. Please try again later.");
+            } else {
+                return ExecutionResponse.error("Judge0 API error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            }
         } catch (Exception e) {
             System.out.println("ERROR: " + e.getMessage());
             e.printStackTrace();
@@ -87,14 +130,14 @@ public class Judge0Service {
 
     private static class Judge0Submission {
         public String source_code;
-        public int language_id;
+        public Integer language_id;
         public String stdin;
         public String expected_output;
 
         @Override
         public String toString() {
             return "Judge0Submission{" +
-                    "source_code='" + (source_code != null ? source_code.substring(0, Math.min(30, source_code.length())) + "..." : "null") + '\'' +
+                    "source_code_length=" + (source_code != null ? source_code.length() : 0) +
                     ", language_id=" + language_id +
                     ", stdin='" + stdin + '\'' +
                     ", expected_output='" + expected_output + '\'' +
@@ -106,14 +149,22 @@ public class Judge0Service {
         ExecutionResponse result = new ExecutionResponse();
 
         if (response != null) {
+            // Handle stdout
             if (response.containsKey("stdout") && response.get("stdout") != null) {
                 result.setOutput(response.get("stdout").toString().trim());
+            } else if (response.containsKey("compile_output") && response.get("compile_output") != null) {
+                result.setOutput(response.get("compile_output").toString().trim());
             }
 
+            // Handle stderr
             if (response.containsKey("stderr") && response.get("stderr") != null) {
-                result.setError(response.get("stderr").toString().trim());
+                String stderr = response.get("stderr").toString().trim();
+                if (!stderr.isEmpty()) {
+                    result.setError(stderr);
+                }
             }
 
+            // Handle execution time
             if (response.containsKey("time") && response.get("time") != null) {
                 try {
                     result.setExecutionTime(Double.parseDouble(response.get("time").toString()));
@@ -122,6 +173,7 @@ public class Judge0Service {
                 }
             }
 
+            // Handle memory usage
             if (response.containsKey("memory") && response.get("memory") != null) {
                 try {
                     result.setMemoryUsed(Double.parseDouble(response.get("memory").toString()));
@@ -130,16 +182,26 @@ public class Judge0Service {
                 }
             }
 
+            // Handle status
             if (response.containsKey("status")) {
-                Map<String, Object> status = (Map<String, Object>) response.get("status");
-                if (status != null && status.containsKey("description")) {
-                    result.setStatus(status.get("description").toString());
+                Object statusObj = response.get("status");
+                if (statusObj instanceof Map) {
+                    Map<String, Object> status = (Map<String, Object>) statusObj;
+                    if (status.containsKey("description")) {
+                        result.setStatus(status.get("description").toString());
+                    }
                 }
             }
 
+            // Check if output matches expected output
             if (expectedOutput != null && !expectedOutput.isEmpty()) {
                 String actualOutput = result.getOutput() != null ? result.getOutput().trim() : "";
                 result.setIsCorrect(actualOutput.equals(expectedOutput.trim()));
+            }
+
+            // If no status set, set a default
+            if (result.getStatus() == null) {
+                result.setStatus("Completed");
             }
         }
 
