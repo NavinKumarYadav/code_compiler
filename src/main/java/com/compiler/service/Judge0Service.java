@@ -39,17 +39,21 @@ public class Judge0Service {
 
     private final JwtUtil jwtUtil;
 
+    private final CodeFormatService codeFormatService;
+
     public Judge0Service(RestTemplate restTemplate, ObjectMapper objectMapper,
                          SubmissionHistoryService submissionHistoryService,
                          RateLimitService rateLimitService, UserService userService,
-                         JwtUtil jwtUtil) {
+                         JwtUtil jwtUtil, CodeFormatService codeFormatService) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.submissionHistoryService = submissionHistoryService;
         this.rateLimitService = rateLimitService;
         this.userService = userService;
         this.jwtUtil = jwtUtil;
+        this.codeFormatService = codeFormatService;
     }
+
 
     private Map<String, Integer> createLanguageMap() {
         Map<String, Integer> languages = new HashMap<>();
@@ -100,6 +104,9 @@ public class Judge0Service {
         }
 
         Map<String, Object> submission = new HashMap<>();
+
+        String formattedCode = codeFormatService.formatCode(request.getCode(), request.getLanguage());
+
         submission.put("source_code", request.getCode());
         submission.put("language_id", languageId);
         submission.put("stdin", request.getInput() != null ? request.getInput() : "");
