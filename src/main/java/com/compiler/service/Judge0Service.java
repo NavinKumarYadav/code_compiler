@@ -3,6 +3,7 @@ package com.compiler.service;
 import com.compiler.dto.ExecutionRequest;
 import com.compiler.dto.ExecutionResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -23,12 +24,15 @@ public class Judge0Service {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final SubmissionHistoryService submissionHistoryService;
 
     private final Map<String, Integer> LANGUAGE_IDS = createLanguageMap();
 
-    public Judge0Service(RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public Judge0Service(RestTemplate restTemplate, ObjectMapper objectMapper,
+                         SubmissionHistoryService submissionHistoryService) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        this.submissionHistoryService = submissionHistoryService;
     }
 
     private Map<String, Integer> createLanguageMap() {
@@ -48,6 +52,10 @@ public class Judge0Service {
     }
 
     public ExecutionResponse executeCode(ExecutionRequest request) {
+        return executeCode(request, null);
+    }
+
+    public ExecutionResponse executeCode(ExecutionRequest request, HttpServletRequest httpRequest) {
         System.out.println("=== JUDGE0 DEBUG ===");
         System.out.println("API Key present: " + (rapidApiKey != null && !rapidApiKey.isEmpty()));
         System.out.println("Judge0 URL: " + judge0BaseUrl);
@@ -104,30 +112,68 @@ public class Judge0Service {
             System.out.println("Response Status: " + response.getStatusCode());
             System.out.println("Raw Response: " + response.getBody());
 
+            ExecutionResponse executionResponse;
+
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> responseBody = objectMapper.readValue(response.getBody(), Map.class);
-                return mapToExecutionResponse(responseBody, request.getExpectedOutput());
+                executionResponse = mapToExecutionResponse(responseBody, request.getExpectedOutput());
             } else {
-                return ExecutionResponse.error("Unexpected response from Judge0: " + response.getStatusCode());
+                executionResponse = ExecutionResponse.error("Unexpected response from Judge0: " + response.getStatusCode());
             }
+
+            saveSubmissionHistory(request, executionResponse, httpRequest);
+
+            return executionResponse;
 
         } catch (HttpClientErrorException e) {
             System.out.println("HTTP Error: " + e.getStatusCode());
             System.out.println("Error Response: " + e.getResponseBodyAsString());
 
+            ExecutionResponse errorResponse;
+
             if (e.getStatusCode() == HttpStatus.FORBIDDEN) {
-                return ExecutionResponse.error("Authentication failed. Please check your Judge0 API key.");
+                errorResponse = ExecutionResponse.error("Authentication failed. Please check your Judge0 API key.");
             } else if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
-                return ExecutionResponse.error("Rate limit exceeded. Please try again later.");
+                errorResponse = ExecutionResponse.error("Rate limit exceeded. Please try again later.");
             } else if (e.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
-                return ExecutionResponse.error("Invalid request format: " + e.getResponseBodyAsString());
+                errorResponse = ExecutionResponse.error("Invalid request format: " + e.getResponseBodyAsString());
             } else {
-                return ExecutionResponse.error("Judge0 API error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+                errorResponse = ExecutionResponse.error("Judge0 API error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
             }
+
+            saveSubmissionHistory(request, errorResponse, httpRequest);
+            return errorResponse;
+
         } catch (Exception e) {
             System.out.println("ERROR: " + e.getMessage());
             e.printStackTrace();
-            return ExecutionResponse.error("Execution failed: " + e.getMessage());
+            ExecutionResponse errorResponse = ExecutionResponse.error("Execution failed: " + e.getMessage());
+            saveSubmissionHistory(request, errorResponse, httpRequest);
+            return errorResponse;
+        }
+    }
+
+    private void saveSubmissionHistory(ExecutionRequest request, ExecutionResponse response, HttpServletRequest httpRequest) {
+        try {
+            String sessionId = (httpRequest != null && httpRequest.getSession() != null) ?
+                    httpRequest.getSession().getId() : "anonymous";
+
+            submissionHistoryService.saveSubmissionWithResult(
+                    request.getCode(),
+                    request.getLanguage(),
+                    response.getOutput(),
+                    response.getError(),
+                    response.getStatus(),
+                    response.getExecutionTime(),
+                    response.getMemoryUsed(),
+                    response.getIsCorrect(),
+                    null,
+                    sessionId
+            );
+
+            System.out.println("✅ Submission history saved successfully for session: " + sessionId);
+        } catch (Exception e) {
+            System.out.println("❌ Failed to save submission history: " + e.getMessage());
         }
     }
 

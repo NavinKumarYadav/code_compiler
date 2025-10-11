@@ -15,6 +15,7 @@ public class ProblemController {
 
     @GetMapping
     public List<Problem> getAll(){
+
         return service.getAll();
     }
 
