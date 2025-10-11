@@ -4,6 +4,7 @@ import com.compiler.dto.ExecutionRequest;
 import com.compiler.dto.ExecutionResponse;
 import com.compiler.service.Judge0Service;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +21,7 @@ public class CompilerController {
     }
 
     @PostMapping("/execute")
-    public ResponseEntity<ExecutionResponse> executeCode(@RequestBody ExecutionRequest request,
+    public ResponseEntity<ExecutionResponse> executeCode(@Valid @RequestBody ExecutionRequest request,
                                                          HttpServletRequest httpRequest) {
         try {
             System.out.println("Received execution request for language: " + request.getLanguage());

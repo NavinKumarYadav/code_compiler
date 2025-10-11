@@ -2,10 +2,15 @@ package com.compiler.service;
 
 import com.compiler.dto.ExecutionRequest;
 import com.compiler.dto.ExecutionResponse;
+import com.compiler.entity.User;
+import com.compiler.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -28,11 +33,22 @@ public class Judge0Service {
 
     private final Map<String, Integer> LANGUAGE_IDS = createLanguageMap();
 
+    private final RateLimitService rateLimitService;
+
+    private final UserService userService;
+
+    private final JwtUtil jwtUtil;
+
     public Judge0Service(RestTemplate restTemplate, ObjectMapper objectMapper,
-                         SubmissionHistoryService submissionHistoryService) {
+                         SubmissionHistoryService submissionHistoryService,
+                         RateLimitService rateLimitService, UserService userService,
+                         JwtUtil jwtUtil) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.submissionHistoryService = submissionHistoryService;
+        this.rateLimitService = rateLimitService;
+        this.userService = userService;
+        this.jwtUtil = jwtUtil;
     }
 
     private Map<String, Integer> createLanguageMap() {
@@ -61,6 +77,12 @@ public class Judge0Service {
         System.out.println("Judge0 URL: " + judge0BaseUrl);
         System.out.println("Language: " + request.getLanguage());
         System.out.println("Code: " + (request.getCode() != null ? request.getCode() : "NULL"));
+
+        String clientId = getClientIdentifier(httpRequest);
+
+        if (!rateLimitService.isAllowed(clientId)) {
+            return ExecutionResponse.error("Rate limit exceeded. Please try again in a minute.");
+        }
 
         if (rapidApiKey == null || rapidApiKey.trim().isEmpty()) {
             return ExecutionResponse.error("Judge0 API key is not configured");
@@ -153,10 +175,19 @@ public class Judge0Service {
         }
     }
 
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && !(
+                authentication instanceof AnonymousAuthenticationToken)) {
+            return userService.findByUsername(authentication.getName());
+        }
+        return null;
+    }
+
     private void saveSubmissionHistory(ExecutionRequest request, ExecutionResponse response, HttpServletRequest httpRequest) {
         try {
-            String sessionId = (httpRequest != null && httpRequest.getSession() != null) ?
-                    httpRequest.getSession().getId() : "anonymous";
+            String sessionId = httpRequest.getSession().getId();
+            User currentUser = getCurrentUser();
 
             submissionHistoryService.saveSubmissionWithResult(
                     request.getCode(),
@@ -167,11 +198,12 @@ public class Judge0Service {
                     response.getExecutionTime(),
                     response.getMemoryUsed(),
                     response.getIsCorrect(),
-                    null,
+                    currentUser,
                     sessionId
             );
 
-            System.out.println("✅ Submission history saved successfully for session: " + sessionId);
+            System.out.println("✅ Submission history saved for user: " +
+                    (currentUser != null ? currentUser.getUsername() : "anonymous"));
         } catch (Exception e) {
             System.out.println("❌ Failed to save submission history: " + e.getMessage());
         }
@@ -231,6 +263,18 @@ public class Judge0Service {
         }
 
         return result;
+    }
+
+    private String getClientIdentifier(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7);
+                return jwtUtil.extractUsername(token);
+            } catch (Exception e) {
+            }
+        }
+        return request.getSession().getId();
     }
 
     public Map<String, String> getSupportedLanguages() {
