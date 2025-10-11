@@ -87,12 +87,4 @@ public class SubmissionController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping
-    public Page<CodeSubmission> getAllSubmissions(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("submittedAt").descending());
-
-        return submissionHistoryService.getAnonymousSubmissions("all", pageable);
-    }
 }
