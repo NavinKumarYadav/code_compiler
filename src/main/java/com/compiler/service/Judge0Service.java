@@ -107,7 +107,7 @@ public class Judge0Service {
 
         String formattedCode = codeFormatService.formatCode(request.getCode(), request.getLanguage());
 
-        submission.put("source_code", request.getCode());
+        submission.put("source_code", formattedCode);
         submission.put("language_id", languageId);
         submission.put("stdin", request.getInput() != null ? request.getInput() : "");
 
@@ -183,10 +183,15 @@ public class Judge0Service {
     }
 
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated() && !(
-                authentication instanceof AnonymousAuthenticationToken)) {
-            return userService.findByUsername(authentication.getName());
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated() &&
+                    !(authentication instanceof AnonymousAuthenticationToken) &&
+                    userService != null) {
+                return userService.findByUsername(authentication.getName());
+            }
+        } catch (Exception e) {
+            System.out.println("User service not available: " + e.getMessage());
         }
         return null;
     }
