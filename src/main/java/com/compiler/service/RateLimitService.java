@@ -1,6 +1,5 @@
 package com.compiler.service;
 
-
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,8 +12,8 @@ public class RateLimitService {
 
     private final int MAX_REQUESTS_PER_MINUTE = 100;
 
-    public boolean isAllowed(String clientId){
-        String key = clientId + ":" + (System.currentTimeMillis()/ 60000);
+    public boolean isAllowed(String userIdentifier){
+        String key = userIdentifier + ":" + (System.currentTimeMillis()/ 60000);
 
         AtomicInteger count = requestCounts.computeIfAbsent(key, k -> new AtomicInteger(0));
 

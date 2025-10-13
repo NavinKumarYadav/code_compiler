@@ -143,14 +143,14 @@ public class Judge0Service {
                 Map<String, Object> responseBody = objectMapper.readValue(response.getBody(), Map.class);
                 executionResponse = mapToExecutionResponse(responseBody, request.getExpectedOutput());
             } else {
-                executionResponse = ExecutionResponse.error("Unexpected response from Judge0: " + response.getStatusCode());
+                executionResponse = ExecutionResponse.error("Unexpected response from Judge0: "
+                        + response.getStatusCode());
             }
 
             saveSubmissionHistory(request, executionResponse, httpRequest);
             return executionResponse;
 
         } catch (SecurityException e) {
-            // Handle security violations
             System.out.println("🚨 SECURITY VIOLATION: " + e.getMessage());
             ExecutionResponse securityResponse = ExecutionResponse.error("Security violation: " + e.getMessage());
             saveSubmissionHistory(request, securityResponse, httpRequest);
@@ -169,7 +169,8 @@ public class Judge0Service {
             } else if (e.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
                 errorResponse = ExecutionResponse.error("Invalid request format: " + e.getResponseBodyAsString());
             } else {
-                errorResponse = ExecutionResponse.error("Judge0 API error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+                errorResponse = ExecutionResponse.error("Judge0 API error: "
+                        + e.getStatusCode() + " - " + e.getResponseBodyAsString());
             }
 
             saveSubmissionHistory(request, errorResponse, httpRequest);
@@ -198,7 +199,8 @@ public class Judge0Service {
         return null;
     }
 
-    private void saveSubmissionHistory(ExecutionRequest request, ExecutionResponse response, HttpServletRequest httpRequest) {
+    private void saveSubmissionHistory(ExecutionRequest request, ExecutionResponse response,
+                                       HttpServletRequest httpRequest) {
         try {
             String sessionId = httpRequest.getSession().getId();
             User currentUser = getCurrentUser();

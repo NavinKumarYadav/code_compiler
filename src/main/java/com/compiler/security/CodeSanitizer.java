@@ -18,6 +18,14 @@ public class CodeSanitizer {
             "Thread.sleep", "while(true)", "for(;;)"
     );
 
+    private static final List<String> ADDITIONAL_DANGEROUS_PATTERNS = Arrays.asList(
+            "java.nio.file", "Files.walk", "Files.delete",
+            "new URL(", "HttpURLConnection", "URLConnection",
+            "ScriptEngine", "GroovyShell", "JavaScript",
+            "defineClass", "setAccessible", "getDeclared",
+            "Unsafe", "sun.misc", "reflect."
+    );
+
     private static final Pattern IMPORT_PATTERN = Pattern.compile("import\\s+.*");
 
     private static final int MAX_CODE_LENGTH = 10000;
@@ -133,5 +141,11 @@ public class CodeSanitizer {
                 lowerCode.contains("for(;;)") ||
                 lowerCode.contains("while(1)") ||
                 lowerCode.contains("for(;;)"));
+    }
+
+    private void checkMemoryExhaustion(String code) {
+        if (code.contains("new byte[") && code.contains("1000000")) {
+            throw new SecurityException("Potential memory exhaustion attack detected");
+        }
     }
 }
