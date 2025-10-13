@@ -19,6 +19,5 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findByUserAndLanguage(@Param("userId") Long userId,
                                            @Param("language") String language);
 
-    List<Submission> findByUserIdOrderByCreatedAtDesc(Long userId);
     List<Submission> findByLanguageAndUserId(String language, Long userId);
 }

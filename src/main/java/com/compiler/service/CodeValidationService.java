@@ -1,6 +1,7 @@
 package com.compiler.service;
 
 import com.compiler.dto.ExecutionRequest;
+import com.compiler.dto.ExecutionLimits; // ✅ Now this will resolve correctly
 import com.compiler.security.CodeSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,21 +14,44 @@ public class CodeValidationService {
 
     private final CodeSanitizer codeSanitizer;
     private final RateLimitService rateLimitService;
+    private final ResourceLimitService resourceLimitService;
 
     public void validateExecutionRequest(ExecutionRequest request, String userIdentifier) {
         log.info("Validating execution request for user: {}", userIdentifier);
 
+        // 1. Rate Limiting
         if (!rateLimitService.isAllowed(userIdentifier)) {
             log.warn("Rate limit exceeded for user: {}", userIdentifier);
             throw new SecurityException("Rate limit exceeded. Please try again later.");
         }
 
+        // 2. Resource Limits Check
+        if (!resourceLimitService.checkCodeSize(request.getCode())) {
+            log.warn("Code size limit exceeded for user: {}", userIdentifier);
+            throw new SecurityException("Code size exceeds maximum allowed limit.");
+        }
+
+        // 3. Input size check
+        if (!resourceLimitService.checkInputSize(request.getInput())) {
+            log.warn("Input size limit exceeded for user: {}", userIdentifier);
+            throw new SecurityException("Input size exceeds maximum allowed limit.");
+        }
+
+        // 4. Language Validation
         codeSanitizer.validateLanguage(request.getLanguage());
         log.debug("Language validated: {}", request.getLanguage());
 
+        // 5. Input Validation
         codeSanitizer.validateInput(request.getInput());
         log.debug("Input validated");
 
+        // 6. Security Validation
+        if (!codeSanitizer.isCodeSafe(request.getCode(), request.getLanguage())) {
+            log.warn("Security violation detected in code for user: {}", userIdentifier);
+            throw new SecurityException("Code contains potentially dangerous operations.");
+        }
+
+        // 7. Code Sanitization
         String originalCode = request.getCode();
         String sanitizedCode = codeSanitizer.sanitizeCode(request.getCode(), request.getLanguage());
         request.setCode(sanitizedCode);
@@ -37,5 +61,10 @@ public class CodeValidationService {
 
     public int getRemainingRequests(String userIdentifier) {
         return (int) rateLimitService.getRemainingRequests(userIdentifier);
+    }
+
+    // ✅ This will now work correctly
+    public ExecutionLimits getExecutionLimits(String userIdentifier) {
+        return resourceLimitService.getLimitsForUser(userIdentifier);
     }
 }
