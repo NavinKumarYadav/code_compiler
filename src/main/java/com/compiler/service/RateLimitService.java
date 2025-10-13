@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RateLimitService {
 
     private final ConcurrentHashMap<String, AtomicInteger> requestCounts = new ConcurrentHashMap<>();
-
     private final int MAX_REQUESTS_PER_MINUTE = 100;
 
     public boolean isAllowed(String userIdentifier){
@@ -22,7 +21,6 @@ public class RateLimitService {
         }
 
         cleanupOldEntries();
-
         return true;
     }
 
@@ -34,8 +32,9 @@ public class RateLimitService {
         });
     }
 
-    public int getRemainingRequests(String clientId){
-        String key = clientId + ":" + (System.currentTimeMillis() / 60000);
+    // ✅ FIXED: Changed parameter name from 'clientId' to 'userIdentifier'
+    public int getRemainingRequests(String userIdentifier){
+        String key = userIdentifier + ":" + (System.currentTimeMillis() / 60000);
         AtomicInteger count = requestCounts.get(key);
         return count != null ? Math.max(0, MAX_REQUESTS_PER_MINUTE - count.get()) : MAX_REQUESTS_PER_MINUTE;
     }

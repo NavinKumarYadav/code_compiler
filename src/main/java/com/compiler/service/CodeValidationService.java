@@ -1,7 +1,7 @@
 package com.compiler.service;
 
 import com.compiler.dto.ExecutionRequest;
-import com.compiler.dto.ExecutionLimits; // ✅ Now this will resolve correctly
+import com.compiler.dto.ExecutionLimits;
 import com.compiler.security.CodeSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +52,6 @@ public class CodeValidationService {
         }
 
         // 7. Code Sanitization
-        String originalCode = request.getCode();
         String sanitizedCode = codeSanitizer.sanitizeCode(request.getCode(), request.getLanguage());
         request.setCode(sanitizedCode);
 
@@ -60,10 +59,10 @@ public class CodeValidationService {
     }
 
     public int getRemainingRequests(String userIdentifier) {
-        return (int) rateLimitService.getRemainingRequests(userIdentifier);
+        // ✅ Ensure this matches your RateLimitService method signature
+        return rateLimitService.getRemainingRequests(userIdentifier);
     }
 
-    // ✅ This will now work correctly
     public ExecutionLimits getExecutionLimits(String userIdentifier) {
         return resourceLimitService.getLimitsForUser(userIdentifier);
     }
