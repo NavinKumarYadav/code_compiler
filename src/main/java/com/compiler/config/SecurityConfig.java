@@ -61,7 +61,11 @@ public class SecurityConfig {
                                 "/api/languages/**",
                                 "/api/submissions/recent",
                                 "/api/submissions/language/**",
-                                "/api/submissions/status/**"
+                                "/api/submissions/status/**",
+                                "/api/health/**",
+                                "/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
