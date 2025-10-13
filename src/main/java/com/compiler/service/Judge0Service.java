@@ -6,6 +6,7 @@ import com.compiler.entity.User;
 import com.compiler.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -18,6 +19,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j  // ✅ ADD THIS
 @Service
 public class Judge0Service {
 
@@ -58,7 +60,6 @@ public class Judge0Service {
         this.codeValidationService = codeValidationService;
     }
 
-
     private Map<String, Integer> createLanguageMap() {
         Map<String, Integer> languages = new HashMap<>();
         languages.put("java", 62);
@@ -80,23 +81,39 @@ public class Judge0Service {
     }
 
     public ExecutionResponse executeCode(ExecutionRequest request, HttpServletRequest httpRequest) {
-        System.out.println("=== JUDGE0 SECURE EXECUTION ===");
-        System.out.println("Language: " + request.getLanguage());
+        // ✅ REPLACE ALL System.out WITH log
+        log.info("=== JUDGE0 SECURE EXECUTION ===");
+
+        // ✅ ADD INPUT VALIDATION AT START
+        if (request == null) {
+            return ExecutionResponse.error("Execution request cannot be null");
+        }
+
+        if (request.getLanguage() == null || request.getLanguage().trim().isEmpty()) {
+            return ExecutionResponse.error("Language must be specified");
+        }
+
+        if (request.getCode() == null || request.getCode().trim().isEmpty()) {
+            return ExecutionResponse.error("Code cannot be empty");
+        }
+
+        log.info("Language: {}", request.getLanguage());
 
         String clientId = getClientIdentifier(httpRequest);
 
         try {
             codeValidationService.validateExecutionRequest(request, clientId);
-            System.out.println("✅ Security validation passed");
+            log.info("Security validation passed for client: {}", clientId);
 
             if (rapidApiKey == null || rapidApiKey.trim().isEmpty()) {
                 return ExecutionResponse.error("Judge0 API key is not configured");
             }
 
-            Integer languageId = LANGUAGE_IDS.get(request.getLanguage());
-            System.out.println("Language ID resolved: " + languageId);
+            // ✅ FIX: Use case-insensitive language lookup
+            Integer languageId = LANGUAGE_IDS.get(request.getLanguage().toLowerCase());
+            log.debug("Language ID resolved: {} for language: {}", languageId, request.getLanguage());
 
-            if (request.getLanguage() == null || languageId == null) {
+            if (languageId == null) {
                 return ExecutionResponse.error("Unsupported language: " + request.getLanguage());
             }
 
@@ -112,7 +129,7 @@ public class Judge0Service {
                 submission.put("expected_output", request.getExpectedOutput());
             }
 
-            System.out.println("Submission Map: " + submission);
+            log.debug("Submission prepared for language: {}", request.getLanguage());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -120,12 +137,12 @@ public class Judge0Service {
             headers.set("X-RapidAPI-Host", "judge0-ce.p.rapidapi.com");
 
             String submissionJson = objectMapper.writeValueAsString(submission);
-            System.out.println("JSON being sent: " + submissionJson);
+            log.debug("Sending request to Judge0 API");
 
             HttpEntity<String> entity = new HttpEntity<>(submissionJson, headers);
 
             String submissionUrl = judge0BaseUrl + "/submissions?base64_encoded=false&wait=true";
-            System.out.println("Making request to: " + submissionUrl);
+            log.debug("Making request to: {}", submissionUrl);
 
             ResponseEntity<String> response = restTemplate.exchange(
                     submissionUrl,
@@ -134,31 +151,30 @@ public class Judge0Service {
                     String.class
             );
 
-            System.out.println("Response Status: " + response.getStatusCode());
-            System.out.println("Raw Response: " + response.getBody());
+            log.debug("Response Status: {}", response.getStatusCode());
 
             ExecutionResponse executionResponse;
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> responseBody = objectMapper.readValue(response.getBody(), Map.class);
                 executionResponse = mapToExecutionResponse(responseBody, request.getExpectedOutput());
+                log.info("Code execution completed successfully for client: {}", clientId);
             } else {
-                executionResponse = ExecutionResponse.error("Unexpected response from Judge0: "
-                        + response.getStatusCode());
+                executionResponse = ExecutionResponse.error("Unexpected response from Judge0: " + response.getStatusCode());
+                log.warn("Unexpected response from Judge0: {}", response.getStatusCode());
             }
 
             saveSubmissionHistory(request, executionResponse, httpRequest);
             return executionResponse;
 
         } catch (SecurityException e) {
-            System.out.println("🚨 SECURITY VIOLATION: " + e.getMessage());
+            log.warn("Security violation detected for client {}: {}", clientId, e.getMessage());
             ExecutionResponse securityResponse = ExecutionResponse.error("Security violation: " + e.getMessage());
             saveSubmissionHistory(request, securityResponse, httpRequest);
             return securityResponse;
 
         } catch (HttpClientErrorException e) {
-            System.out.println("HTTP Error: " + e.getStatusCode());
-            System.out.println("Error Response: " + e.getResponseBodyAsString());
+            log.error("Judge0 API HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
 
             ExecutionResponse errorResponse;
 
@@ -169,16 +185,14 @@ public class Judge0Service {
             } else if (e.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
                 errorResponse = ExecutionResponse.error("Invalid request format: " + e.getResponseBodyAsString());
             } else {
-                errorResponse = ExecutionResponse.error("Judge0 API error: "
-                        + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+                errorResponse = ExecutionResponse.error("Judge0 API error: " + e.getStatusCode());
             }
 
             saveSubmissionHistory(request, errorResponse, httpRequest);
             return errorResponse;
 
         } catch (Exception e) {
-            System.out.println("ERROR: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Judge0 service error for client {}: {}", clientId, e.getMessage(), e);
             ExecutionResponse errorResponse = ExecutionResponse.error("Execution failed: " + e.getMessage());
             saveSubmissionHistory(request, errorResponse, httpRequest);
             return errorResponse;
@@ -194,7 +208,7 @@ public class Judge0Service {
                 return userService.findByUsername(authentication.getName());
             }
         } catch (Exception e) {
-            System.out.println("User service not available: " + e.getMessage());
+            log.debug("User service not available: {}", e.getMessage());
         }
         return null;
     }
@@ -202,7 +216,7 @@ public class Judge0Service {
     private void saveSubmissionHistory(ExecutionRequest request, ExecutionResponse response,
                                        HttpServletRequest httpRequest) {
         try {
-            String sessionId = httpRequest.getSession().getId();
+            String sessionId = httpRequest != null ? httpRequest.getSession().getId() : "no-session";
             User currentUser = getCurrentUser();
 
             submissionHistoryService.saveSubmissionWithResult(
@@ -218,10 +232,11 @@ public class Judge0Service {
                     sessionId
             );
 
-            System.out.println("✅ Submission history saved for user: " +
-                    (currentUser != null ? currentUser.getUsername() : "anonymous"));
+            log.info("Submission history saved for user: {}",
+                    currentUser != null ? currentUser.getUsername() : "anonymous");
         } catch (Exception e) {
-            System.out.println("❌ Failed to save submission history: " + e.getMessage());
+            log.error("Failed to save submission history for language {}: {}",
+                    request.getLanguage(), e.getMessage());
         }
     }
 
@@ -247,6 +262,7 @@ public class Judge0Service {
                     result.setExecutionTime(Double.parseDouble(response.get("time").toString()));
                 } catch (NumberFormatException e) {
                     result.setExecutionTime(0.0);
+                    log.debug("Failed to parse execution time: {}", response.get("time"));
                 }
             }
 
@@ -255,6 +271,7 @@ public class Judge0Service {
                     result.setMemoryUsed(Double.parseDouble(response.get("memory").toString()));
                 } catch (NumberFormatException e) {
                     result.setMemoryUsed(0.0);
+                    log.debug("Failed to parse memory usage: {}", response.get("memory"));
                 }
             }
 
@@ -282,12 +299,17 @@ public class Judge0Service {
     }
 
     private String getClientIdentifier(HttpServletRequest request) {
+        if (request == null) {
+            return "anonymous-client";
+        }
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
                 String token = authHeader.substring(7);
                 return jwtUtil.extractUsername(token);
             } catch (Exception e) {
+                log.debug("Failed to extract user from token: {}", e.getMessage());
             }
         }
         return request.getSession().getId();
