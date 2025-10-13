@@ -4,23 +4,22 @@ import com.compiler.dto.ExecutionRequest;
 import com.compiler.dto.ExecutionResponse;
 import com.compiler.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class Judge0ServiceTest {
 
     @Mock
@@ -44,17 +43,26 @@ class Judge0ServiceTest {
     @Mock
     private CodeFormatService codeFormatService;
 
+    @Mock
+    private HttpServletRequest httpServletRequest; // Add this mock
+
     @InjectMocks
     private Judge0Service judge0Service;
 
     private ExecutionRequest validRequest;
 
     @BeforeEach
-    void setUp(){
+    void setUp() {
         validRequest = new ExecutionRequest();
         validRequest.setCode("print('hello')");
         validRequest.setLanguage("python");
         validRequest.setInput("");
+
+
+        when(httpServletRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+
+
+        lenient().when(rateLimitService.isAllowed(anyString())).thenReturn(true);
     }
 
     @Test
@@ -62,7 +70,7 @@ class Judge0ServiceTest {
 
         when(rateLimitService.isAllowed(anyString())).thenReturn(false);
 
-        ExecutionResponse response = judge0Service.executeCode(validRequest);
+        ExecutionResponse response = judge0Service.executeCode(validRequest, httpServletRequest);
 
         assertNotNull(response);
         assertTrue(response.getError().contains("Rate limit exceeded"));
@@ -72,9 +80,8 @@ class Judge0ServiceTest {
     @Test
     void testExecuteCode_EmptyCode() {
         validRequest.setCode("");
-        when(rateLimitService.isAllowed(anyString())).thenReturn(true);
 
-        ExecutionResponse response = judge0Service.executeCode(validRequest);
+        ExecutionResponse response = judge0Service.executeCode(validRequest, httpServletRequest);
 
         assertNotNull(response);
         assertTrue(response.getError().contains("Source code cannot be empty"));
@@ -83,9 +90,8 @@ class Judge0ServiceTest {
     @Test
     void testExecuteCode_UnsupportedLanguage() {
         validRequest.setLanguage("unknown");
-        when(rateLimitService.isAllowed(anyString())).thenReturn(true);
 
-        ExecutionResponse response = judge0Service.executeCode(validRequest);
+        ExecutionResponse response = judge0Service.executeCode(validRequest, httpServletRequest);
 
         assertNotNull(response);
         assertTrue(response.getError().contains("Unsupported language"));
@@ -93,12 +99,32 @@ class Judge0ServiceTest {
 
     @Test
     void testExecuteCode_CodeFormatting() {
-
-        when(rateLimitService.isAllowed(anyString())).thenReturn(true);
         when(codeFormatService.formatCode(anyString(), anyString())).thenReturn("formatted_code");
 
-        judge0Service.executeCode(validRequest);
+        judge0Service.executeCode(validRequest, httpServletRequest);
 
         verify(codeFormatService).formatCode("print('hello')", "python");
+    }
+
+    @Test
+    void testExecuteCode_SuccessfulExecution() {
+
+        when(codeFormatService.formatCode(anyString(), anyString())).thenReturn("print('hello')");
+
+        ExecutionResponse response = judge0Service.executeCode(validRequest, httpServletRequest);
+
+        assertNotNull(response);
+
+    }
+
+    @Test
+    void testExecuteCode_WithUserAuthentication() {
+
+        when(jwtUtil.extractUsername(anyString())).thenReturn("user123");
+        when(httpServletRequest.getHeader("Authorization")).thenReturn("Bearer token123");
+
+        ExecutionResponse response = judge0Service.executeCode(validRequest, httpServletRequest);
+
+        assertNotNull(response);
     }
 }
