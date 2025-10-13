@@ -41,10 +41,13 @@ public class Judge0Service {
 
     private final CodeFormatService codeFormatService;
 
+    private final CodeValidationService codeValidationService;
+
     public Judge0Service(RestTemplate restTemplate, ObjectMapper objectMapper,
                          SubmissionHistoryService submissionHistoryService,
                          RateLimitService rateLimitService, UserService userService,
-                         JwtUtil jwtUtil, CodeFormatService codeFormatService) {
+                         JwtUtil jwtUtil, CodeFormatService codeFormatService,
+                         CodeValidationService codeValidationService) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.submissionHistoryService = submissionHistoryService;
@@ -52,6 +55,7 @@ public class Judge0Service {
         this.userService = userService;
         this.jwtUtil = jwtUtil;
         this.codeFormatService = codeFormatService;
+        this.codeValidationService = codeValidationService;
     }
 
 
@@ -76,53 +80,45 @@ public class Judge0Service {
     }
 
     public ExecutionResponse executeCode(ExecutionRequest request, HttpServletRequest httpRequest) {
-        System.out.println("=== JUDGE0 DEBUG ===");
-        System.out.println("API Key present: " + (rapidApiKey != null && !rapidApiKey.isEmpty()));
-        System.out.println("Judge0 URL: " + judge0BaseUrl);
+        System.out.println("=== JUDGE0 SECURE EXECUTION ===");
         System.out.println("Language: " + request.getLanguage());
-        System.out.println("Code: " + (request.getCode() != null ? request.getCode() : "NULL"));
 
         String clientId = getClientIdentifier(httpRequest);
 
-        if (!rateLimitService.isAllowed(clientId)) {
-            return ExecutionResponse.error("Rate limit exceeded. Please try again in a minute.");
-        }
-
-        if (rapidApiKey == null || rapidApiKey.trim().isEmpty()) {
-            return ExecutionResponse.error("Judge0 API key is not configured");
-        }
-
-        if (request.getCode() == null || request.getCode().trim().isEmpty()) {
-            return ExecutionResponse.error("Source code cannot be empty");
-        }
-
-        Integer languageId = LANGUAGE_IDS.get(request.getLanguage());
-        System.out.println("Language ID resolved: " + languageId);
-
-        if (request.getLanguage() == null || languageId == null) {
-            return ExecutionResponse.error("Unsupported language: " + request.getLanguage());
-        }
-
-        Map<String, Object> submission = new HashMap<>();
-
-        String formattedCode = codeFormatService.formatCode(request.getCode(), request.getLanguage());
-
-        submission.put("source_code", formattedCode);
-        submission.put("language_id", languageId);
-        submission.put("stdin", request.getInput() != null ? request.getInput() : "");
-
-        if (request.getExpectedOutput() != null && !request.getExpectedOutput().trim().isEmpty()) {
-            submission.put("expected_output", request.getExpectedOutput());
-        }
-
-        System.out.println("Submission Map: " + submission);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-RapidAPI-Key", rapidApiKey);
-        headers.set("X-RapidAPI-Host", "judge0-ce.p.rapidapi.com");
-
         try {
+            codeValidationService.validateExecutionRequest(request, clientId);
+            System.out.println("✅ Security validation passed");
+
+            if (rapidApiKey == null || rapidApiKey.trim().isEmpty()) {
+                return ExecutionResponse.error("Judge0 API key is not configured");
+            }
+
+            Integer languageId = LANGUAGE_IDS.get(request.getLanguage());
+            System.out.println("Language ID resolved: " + languageId);
+
+            if (request.getLanguage() == null || languageId == null) {
+                return ExecutionResponse.error("Unsupported language: " + request.getLanguage());
+            }
+
+            Map<String, Object> submission = new HashMap<>();
+
+            String formattedCode = codeFormatService.formatCode(request.getCode(), request.getLanguage());
+
+            submission.put("source_code", formattedCode);
+            submission.put("language_id", languageId);
+            submission.put("stdin", request.getInput() != null ? request.getInput() : "");
+
+            if (request.getExpectedOutput() != null && !request.getExpectedOutput().trim().isEmpty()) {
+                submission.put("expected_output", request.getExpectedOutput());
+            }
+
+            System.out.println("Submission Map: " + submission);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-RapidAPI-Key", rapidApiKey);
+            headers.set("X-RapidAPI-Host", "judge0-ce.p.rapidapi.com");
+
             String submissionJson = objectMapper.writeValueAsString(submission);
             System.out.println("JSON being sent: " + submissionJson);
 
@@ -151,8 +147,14 @@ public class Judge0Service {
             }
 
             saveSubmissionHistory(request, executionResponse, httpRequest);
-
             return executionResponse;
+
+        } catch (SecurityException e) {
+            // Handle security violations
+            System.out.println("🚨 SECURITY VIOLATION: " + e.getMessage());
+            ExecutionResponse securityResponse = ExecutionResponse.error("Security violation: " + e.getMessage());
+            saveSubmissionHistory(request, securityResponse, httpRequest);
+            return securityResponse;
 
         } catch (HttpClientErrorException e) {
             System.out.println("HTTP Error: " + e.getStatusCode());
