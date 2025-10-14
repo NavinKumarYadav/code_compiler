@@ -131,28 +131,45 @@ public class AuthController {
         return ResponseEntity.ok("Auth controller is working! ✅");
     }
     @GetMapping("/verify")
-    public ResponseEntity<?> verifyToken(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> verifyToken(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                String username = jwtUtil.extractUsername(token);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(Map.of(
+                        "valid", false,
+                        "message", "Missing or invalid Authorization header"
+                ));
+            }
 
-                if (username != null) {
-                    UserDetails userDetails = userService.loadUserByUsername(username);
+            String token = authHeader.substring(7);
 
-                    if (jwtUtil.validateToken(token, userDetails)) {
-                        User user = userService.findByUsername(username);
-                        return ResponseEntity.ok(Map.of(
-                                "valid", true,
-                                "username", user.getUsername(),
-                                "email", user.getEmail()
-                        ));
-                    }
+            if (token.trim().isEmpty()) {
+                return ResponseEntity.status(401).body(Map.of(
+                        "valid", false,
+                        "message", "Empty token"
+                ));
+            }
+
+            String username = jwtUtil.extractUsername(token);
+
+            if (username != null) {
+                UserDetails userDetails = userService.loadUserByUsername(username);
+
+                if (jwtUtil.validateToken(token, userDetails)) {
+                    User user = userService.findByUsername(username);
+                    return ResponseEntity.ok(Map.of(
+                            "valid", true,
+                            "username", user.getUsername(),
+                            "email", user.getEmail()
+                    ));
                 }
             }
             return ResponseEntity.status(401).body(Map.of("valid", false, "message", "Invalid token"));
         } catch (Exception e) {
-            return ResponseEntity.status(401).body(Map.of("valid", false, "message", "Token verification failed"));
+            log.error("Token verification failed", e);
+            return ResponseEntity.status(401).body(Map.of(
+                    "valid", false,
+                    "message", "Token verification failed: " + e.getMessage()
+            ));
         }
     }
 }
