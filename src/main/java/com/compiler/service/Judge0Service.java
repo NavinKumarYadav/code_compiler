@@ -19,7 +19,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
-@Slf4j  // ✅ ADD THIS
+@Slf4j
 @Service
 public class Judge0Service {
 
@@ -81,10 +81,9 @@ public class Judge0Service {
     }
 
     public ExecutionResponse executeCode(ExecutionRequest request, HttpServletRequest httpRequest) {
-        // ✅ REPLACE ALL System.out WITH log
+
         log.info("=== JUDGE0 SECURE EXECUTION ===");
 
-        // ✅ ADD INPUT VALIDATION AT START
         if (request == null) {
             return ExecutionResponse.error("Execution request cannot be null");
         }
@@ -109,7 +108,6 @@ public class Judge0Service {
                 return ExecutionResponse.error("Judge0 API key is not configured");
             }
 
-            // ✅ FIX: Use case-insensitive language lookup
             Integer languageId = LANGUAGE_IDS.get(request.getLanguage().toLowerCase());
             log.debug("Language ID resolved: {} for language: {}", languageId, request.getLanguage());
 

@@ -13,7 +13,7 @@ public class RateLimitService {
 
     public boolean isAllowed(String userIdentifier) {
         if (userIdentifier == null || userIdentifier.trim().isEmpty()) {
-            return false; // Reject invalid identifiers
+            return false;
         }
 
         String key = userIdentifier + ":" + (System.currentTimeMillis() / 60000);
@@ -34,21 +34,21 @@ public class RateLimitService {
             try {
                 String[] parts = key.split(":");
                 if (parts.length < 2) {
-                    return true; // Remove invalid keys
+                    return true;
                 }
                 long keyMinute = Long.parseLong(parts[1]);
-                return currentMinute - keyMinute > 1; // Remove entries older than 1 minute
+                return currentMinute - keyMinute > 1;
             } catch (NumberFormatException e) {
-                return true; // Remove corrupted entries
+                return true;
             } catch (Exception e) {
-                return true; // Remove any problematic entries
+                return true;
             }
         });
     }
 
     public int getRemainingRequests(String userIdentifier) {
         if (userIdentifier == null || userIdentifier.trim().isEmpty()) {
-            return 0; // No requests allowed for invalid identifiers
+            return 0;
         }
 
         String key = userIdentifier + ":" + (System.currentTimeMillis() / 60000);

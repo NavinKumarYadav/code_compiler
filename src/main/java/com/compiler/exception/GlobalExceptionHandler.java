@@ -3,26 +3,50 @@ package com.compiler.exception;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    // ✅ ADD: Handle NoHandlerFoundException (404 errors)
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoHandlerFound(NoHandlerFoundException ex) {
+        log.debug("No handler found for: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "Not Found",
+                "The requested resource was not found: " + ex.getRequestURL(),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex) {
+        // ✅ FIX: Don't log 404 errors as errors
+        if (ex instanceof NoHandlerFoundException) {
+            return handleNoHandlerFound((NoHandlerFoundException) ex);
+        }
+
+        log.error("Unexpected error occurred: {}", ex.getMessage(), ex);
+
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Internal Server Error",
                 "An unexpected error occurred",
-                ex.getMessage(),
                 LocalDateTime.now()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -64,6 +88,5 @@ public class GlobalExceptionHandler {
         private String error;
         private String message;
         private LocalDateTime timestamp;
-
     }
 }

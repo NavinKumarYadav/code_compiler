@@ -20,13 +20,8 @@ public class CodeExecutionService {
         log.info("Executing code for user: {}, language: {}", userIdentifier, request.getLanguage());
 
         try {
-            // 1. Get execution limits for this user
             ExecutionLimits limits = validationService.getExecutionLimits(userIdentifier);
 
-            // 2. Apply execution limits to the request (if needed)
-            // Your existing Judge0Service already handles limits through configuration
-
-            // 3. Execute code using your existing Judge0Service
             ExecutionResponse response = judge0Service.executeCode(request, httpRequest);
 
             log.info("Code execution completed for user: {}, success: {}", userIdentifier,
@@ -38,11 +33,7 @@ public class CodeExecutionService {
             return ExecutionResponse.error("Execution failed: " + e.getMessage());
         }
     }
-
-    // Overloaded method without HttpServletRequest for backward compatibility
     public ExecutionResponse executeCode(ExecutionRequest request, String userIdentifier) {
-        // Create a simple mock HttpServletRequest or use null
-        // Note: This might not work for all features like session tracking
         return executeCode(request, userIdentifier, null);
     }
 }

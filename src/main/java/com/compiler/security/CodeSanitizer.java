@@ -151,7 +151,6 @@ public class CodeSanitizer {
     private String sanitizeCppCode(String code) {
         checkForDangerousKeywords(code, CPP_DANGEROUS, "C++");
 
-        // NEW: Check for inline assembly
         if (code.contains("asm(") || code.contains("__asm__")) {
             throw new SecurityException("Inline assembly not allowed");
         }
@@ -238,7 +237,6 @@ public class CodeSanitizer {
     }
 
     private void checkForDeepRecursion(String code, String language) {
-        // Simple check for multiple recursive calls
         if (countOccurrences(code, language.equals("java") ? "public static" : "def ") > 10) {
             throw new SecurityException("Too many function definitions - potential code complexity attack");
         }
