@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    // ✅ ADD: Handle NoHandlerFoundException (404 errors)
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoHandlerFound(NoHandlerFoundException ex) {
         log.debug("No handler found for: {} {}", ex.getHttpMethod(), ex.getRequestURL());
@@ -36,7 +35,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex) {
-        // ✅ FIX: Don't log 404 errors as errors
         if (ex instanceof NoHandlerFoundException) {
             return handleNoHandlerFound((NoHandlerFoundException) ex);
         }

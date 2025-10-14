@@ -26,8 +26,4 @@ public class ProblemService {
         return problemRepository.save(p);
     }
 
-
-
-
-
 }
