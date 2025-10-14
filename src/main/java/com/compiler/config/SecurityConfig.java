@@ -60,6 +60,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/compile/**",
                                 "/api/languages/**",
+                                "/api/submissions/**",
                                 "/api/submissions/recent",
                                 "/api/submissions/language/**",
                                 "/api/submissions/status/**",

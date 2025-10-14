@@ -9,10 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -88,8 +85,7 @@ public class SubmissionController {
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("submittedAt").descending());
 
-        String sessionId = "user_" + (userDetails != null ? userDetails.getUsername() : "anonymous");
-        return submissionHistoryService.getAnonymousSubmissions(sessionId, pageable);
+        return new PageImpl<>(List.of(), pageable, 0);
     }
 
     @Operation(
@@ -140,18 +136,11 @@ public class SubmissionController {
             @ApiResponse(
                     responseCode = "200",
                     description = "User statistics retrieved successfully"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "User not authenticated"
             )
     })
     @GetMapping("/statistics")
     public ResponseEntity<SubmissionHistoryService.UserStatistics> getUserStatistics(
             @AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            return ResponseEntity.badRequest().build();
-        }
 
         SubmissionHistoryService.UserStatistics stats =
                 new SubmissionHistoryService.UserStatistics(0L, 0L);
