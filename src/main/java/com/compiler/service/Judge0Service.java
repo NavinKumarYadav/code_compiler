@@ -2,6 +2,7 @@ package com.compiler.service;
 
 import com.compiler.dto.ExecutionRequest;
 import com.compiler.dto.ExecutionResponse;
+import com.compiler.entity.CodeSubmission;
 import com.compiler.entity.User;
 import com.compiler.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -214,10 +215,20 @@ public class Judge0Service {
     private void saveSubmissionHistory(ExecutionRequest request, ExecutionResponse response,
                                        HttpServletRequest httpRequest) {
         try {
-            String sessionId = httpRequest != null ? httpRequest.getSession().getId() : "no-session";
-            User currentUser = getCurrentUser();
+            log.info("🔄 SAVE SUBMISSION - Starting save process for language: {}", request.getLanguage());
 
-            submissionHistoryService.saveSubmissionWithResult(
+            String sessionId = "no-session";
+            if (httpRequest != null && httpRequest.getSession() != null) {
+                sessionId = httpRequest.getSession().getId();
+                log.info("📱 Session ID: {}", sessionId);
+            } else {
+                log.warn("⚠️ No HTTP request or session available");
+            }
+
+            User currentUser = getCurrentUser();
+            log.info("👤 Current user: {}", currentUser != null ? currentUser.getUsername() : "anonymous");
+
+            CodeSubmission savedSubmission = submissionHistoryService.saveSubmissionWithResult(
                     request.getCode(),
                     request.getLanguage(),
                     response.getOutput(),
@@ -230,11 +241,11 @@ public class Judge0Service {
                     sessionId
             );
 
-            log.info("Submission history saved for user: {}",
-                    currentUser != null ? currentUser.getUsername() : "anonymous");
+            log.info("✅ SUBMISSION SAVED SUCCESSFULLY - ID: {}, Language: {}",
+                    savedSubmission.getId(), savedSubmission.getLanguage());
+
         } catch (Exception e) {
-            log.error("Failed to save submission history for language {}: {}",
-                    request.getLanguage(), e.getMessage());
+            log.error("❌ FAILED TO SAVE SUBMISSION: {}", e.getMessage(), e);
         }
     }
 

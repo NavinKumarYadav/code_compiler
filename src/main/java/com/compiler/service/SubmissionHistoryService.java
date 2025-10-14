@@ -24,6 +24,14 @@ public class SubmissionHistoryService {
         return submissionRepository.save(submission);
     }
 
+    public Page<CodeSubmission> getAllSubmissions(Pageable pageable) {
+        return submissionRepository.findAll(pageable);
+    }
+
+    public long getTotalSubmissions() {
+        return submissionRepository.count();
+    }
+
     public CodeSubmission saveSubmissionWithResult(String code, String language, String output,
                                                    String error, String status, Double executionTime,
                                                    Double memoryUsed, Boolean isCorrect, User user, String sessionId) {

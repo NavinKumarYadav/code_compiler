@@ -2,7 +2,9 @@ package com.compiler.controller;
 
 import com.compiler.dto.ExecutionRequest;
 import com.compiler.dto.ExecutionResponse;
+import com.compiler.entity.CodeSubmission;
 import com.compiler.service.Judge0Service;
+import com.compiler.service.SubmissionHistoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -28,6 +30,8 @@ import java.util.Map;
 public class CompilerController {
 
     private final Judge0Service judge0Service;
+
+    private final SubmissionHistoryService submissionHistoryService;
 
 
     @Operation(
@@ -102,6 +106,22 @@ public class CompilerController {
         }
     }
 
+    @GetMapping("/execute")
+    public ResponseEntity<Map<String, Object>> getExecuteInfo() {
+        return ResponseEntity.ok(Map.of(
+                "message", "This endpoint requires POST method with JSON body",
+                "example", Map.of(
+                        "method", "POST",
+                        "headers", Map.of("Content-Type", "application/json"),
+                        "body", Map.of(
+                                "language", "java",
+                                "code", "public class Main { public static void main(String[] args) { System.out.println(\\\"Hello World\\\"); } }",
+                                "input", ""
+                        )
+                )
+        ));
+    }
+
     @Operation(
             summary = "Get supported languages",
             description = "Retrieve list of all supported programming languages with their compiler/interpreter versions"
@@ -160,4 +180,35 @@ public class CompilerController {
         );
         return ResponseEntity.ok(status);
     }
+
+    @PostMapping("/test-save")
+    public ResponseEntity<?> testSaveSubmission() {
+        try {
+            log.info("🧪 TEST: Attempting to save submission directly");
+
+            CodeSubmission submission = new CodeSubmission();
+            submission.setCode("public class Test { public static void main(String[] args) { System.out.println(\"Test\"); } }");
+            submission.setLanguage("java");
+            submission.setOutput("Test\n");
+            submission.setStatus("Accepted");
+            submission.setSubmittedAt(java.time.LocalDateTime.now());
+
+            CodeSubmission saved = submissionHistoryService.saveSubmission(submission);
+
+            log.info("✅ TEST: Submission saved successfully with ID: {}", saved.getId());
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "savedId", saved.getId(),
+                    "message", "Test submission saved successfully"
+            ));
+        } catch (Exception e) {
+            log.error("❌ TEST: Failed to save submission: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
 }
