@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ProblemService {
@@ -31,9 +32,15 @@ public class ProblemService {
                 throw new RuntimeException("Problem title cannot be empty");
             }
 
-            if (existsByTitle(p.getTitle())) {
-                throw new RuntimeException("Problem with title '" + p.getTitle() + "' already exists");
-            }
+            String trimmedTitle = p.getTitle().trim();
+            p.setTitle(trimmedTitle);
+
+        Optional<Problem> existingProblem = problemRepository.findByTitle(trimmedTitle);
+
+        if (existingProblem.isPresent()) {
+
+            throw new RuntimeException("Problem with title '" + trimmedTitle + "' already exists");
+        }
 
             if (p.getDescription() == null || p.getDescription().trim().isEmpty()) {
                 throw new RuntimeException("Problem description cannot be empty");
@@ -56,10 +63,13 @@ public class ProblemService {
 
         if (problemDetails.getTitle() != null &&
                 !problemDetails.getTitle().equals(existingProblem.getTitle())) {
-            if (existsByTitle(problemDetails.getTitle())) {
-                throw new RuntimeException("Problem with title '" + problemDetails.getTitle() + "' already exists");
+
+            String trimmedTitle = problemDetails.getTitle().trim();
+
+            if (existsByTitle(trimmedTitle)) {
+                throw new RuntimeException("Problem with title '" + trimmedTitle + "' already exists");
             }
-            existingProblem.setTitle(problemDetails.getTitle());
+            existingProblem.setTitle(trimmedTitle);
         }
 
         if (problemDetails.getDescription() != null) {

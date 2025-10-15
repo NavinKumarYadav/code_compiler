@@ -28,8 +28,16 @@ public class ProblemController {
     }
 
     @PostMapping
-    public Problem create(@RequestBody Problem p){
-        return service.create(p);
+    public ResponseEntity<?> create(@RequestBody Problem p) {
+        try {
+            Problem createdProblem = service.create(p);
+            return ResponseEntity.ok(createdProblem);
+        } catch (RuntimeException e) {
+
+            return ResponseEntity.ok(Map.of(
+                    "error", e.getMessage()
+            ));
+        }
     }
 
     @DeleteMapping("/{id}")

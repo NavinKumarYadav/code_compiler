@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.DynamicUpdate;
 
 @Entity
-@Table(name = "problems")
+@Table(name = "problems", uniqueConstraints = { @UniqueConstraint(columnNames = "title")})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,14 +17,16 @@ public class Problem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(unique = true)
     private String title;
-    @Column(columnDefinition = "Text")
+
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(columnDefinition = "Text")
+    @Column(columnDefinition = "TEXT")
     private String input;
 
-    @Column(columnDefinition = "Text")
+    @Column(columnDefinition = "TEXT")
     private String output;
 
     private Integer timeLimitMs;
