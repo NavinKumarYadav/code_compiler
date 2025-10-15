@@ -48,7 +48,7 @@ public class HomeController {
         info.put("name", "Code Compiler API");
         info.put("description", "A secure code compilation service");
         info.put("version", "1.0.0");
-        info.put("author", "Your Name");
+        info.put("author", "Navin Kumar Yadav");
         info.put("documentation", "/swagger-ui.html");
 
         return ResponseEntity.ok(info);
