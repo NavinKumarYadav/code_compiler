@@ -4,12 +4,14 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 @Entity
 @Table(name = "problems")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@DynamicUpdate
 public class Problem {
 
     @Id
@@ -27,5 +29,7 @@ public class Problem {
 
     private Integer timeLimitMs;
     private Integer memoryLimitKb;
+
+    private String difficulty;
 
 }
