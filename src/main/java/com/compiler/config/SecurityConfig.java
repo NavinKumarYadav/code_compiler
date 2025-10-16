@@ -53,6 +53,7 @@ public class SecurityConfig {
                                 "/health",
                                 "/api/info",
                                 "/auth/**",
+                                "/api/auth/**",
                                 "/auth/test",
                                 "/error",
                                 "/favicon.ico",

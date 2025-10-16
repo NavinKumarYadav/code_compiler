@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "code_submissions")
+@Table(name = "code_submission")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -38,6 +38,10 @@ public class CodeSubmission {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "problem_id")
+    private Problem problem;
 
     @Column(name = "session_id")
     private String sessionId;

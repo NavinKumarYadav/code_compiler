@@ -1,11 +1,8 @@
 package com.compiler.service;
 
 import com.compiler.dto.SubmissionRequest;
-import com.compiler.entity.Problem;
-import com.compiler.entity.Submission;
-import com.compiler.entity.SubmissionStatus;
-import com.compiler.entity.User;
-import com.compiler.repository.SubmissionRepository;
+import com.compiler.entity.*;
+import com.compiler.repository.CodeSubmissionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -15,14 +12,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import org.springframework.http.HttpHeaders;
+
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
 public class SubmissionService {
 
-    @Autowired
-    private SubmissionRepository submissionRepository;
+   @Autowired
+   private CodeSubmissionRepository codeSubmissionRepository;
     @Autowired
     private ProblemService problemService;
     @Autowired
@@ -33,17 +32,18 @@ public class SubmissionService {
 
     private final String JUDGE0_URL = "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true";
 
-    public Submission submitCode(String username, SubmissionRequest submissionRequest) {
+    public CodeSubmission submitCode(String username, SubmissionRequest submissionRequest) {
         User user = userService.findByUsername(username);
         Problem problem = problemService.getById(submissionRequest.getProblemId());
 
-        Submission submission = new Submission();
+        CodeSubmission submission = new CodeSubmission();
         submission.setUser(user);
         submission.setProblem(problem);
-        submission.setSourceCode(submissionRequest.getCode());
+        submission.setCode(submissionRequest.getCode());
         submission.setLanguage(submissionRequest.getLanguage());
-        submission.setStatus(SubmissionStatus.PENDING);
-        submissionRepository.save(submission);
+        submission.setStatus("PENDING");
+        submission.setSubmittedAt(LocalDateTime.now());
+        codeSubmissionRepository.save(submission);
 
         Map<String, Object> body = new HashMap<>();
         body.put("source_code", submissionRequest.getCode());
@@ -66,19 +66,22 @@ public class SubmissionService {
         String statusDescription = responseBody.get("status") != null &&
                 ((Map) responseBody.get("status")).get("description") != null
                 ? ((Map) responseBody.get("status")).get("description").toString() : "";
+
+        String status;
         if(statusDescription.contains("Time Limit Exceeded")){
-            submission.setStatus( SubmissionStatus.TIMEOUT);
+            status = "TIMEOUT";
         } else if (statusDescription.contains("Accepted")) {
-            submission.setStatus(SubmissionStatus.COMPLETED);
-        }else {
-            submission.setStatus(SubmissionStatus.FAILED);
+            status = "COMPLETED";
+        } else {
+            status = "FAILED";
         }
+        submission.setStatus(status);
         submission.setOutput(output);
 
-        return submissionRepository.save(submission);
+        return codeSubmissionRepository.save(submission);
     }
-    public Submission getSubmission(Long id){
-        return submissionRepository.findById(id)
+    public CodeSubmission getSubmission(Long id){
+        return codeSubmissionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Submission not found"));
     }
 
