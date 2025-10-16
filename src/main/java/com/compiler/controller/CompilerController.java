@@ -115,7 +115,11 @@ public class CompilerController {
                         "headers", Map.of("Content-Type", "application/json"),
                         "body", Map.of(
                                 "language", "java",
-                                "code", "public class Main { public static void main(String[] args) { System.out.println(\\\"Hello World\\\"); } }",
+                                "code", "public class Main { " +
+                                        "public static void main(String[] args) { " +
+                                        "System.out.println(\\\"Hello World\\\"); " +
+                                        "} " +
+                                        "}",
                                 "input", ""
                         )
                 )
