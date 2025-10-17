@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS problems (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
-    difficulty ENUM('EASY', 'MEDIUM', 'HARD') DEFAULT 'EASY',
+    difficulty VARCHAR(20) DEFAULT 'EASY',
     input TEXT,
     output TEXT,
     time_limit_ms INT DEFAULT 1000,

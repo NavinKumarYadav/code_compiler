@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS code_submission (
+CREATE TABLE IF NOT EXISTS code_submissions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     code TEXT NOT NULL,
     language VARCHAR(50) NOT NULL,

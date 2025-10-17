@@ -1,4 +1,4 @@
-INSERT IGNORE INTO users (username, email, password, created_at) VALUES
+INSERT IGNORE INTO users (username, email, password_hash, created_at) VALUES
 ('Sanjeev', 'sanjeev@gmail.com', '$2a$10$f9IGHEKSF6C.B/LrDQ37nOrD/Jru4TrwJHYFVQFArZKCAoM1C/O/6', NOW()),
 ('Sanju', 'sanju@gmail.com', '$2a$10$7M4a4CA0/dx6zHXy89t1ZengMkqc2dDirAtuSYQbpkwMUI4Ej8UtC', NOW()),
 ('Aditya', 'aditya@gmail.com', '$2a$10$.i7KAAyspyqJZcN7M2YWneRR72Y2FzhfQc5pfoY886WYZG6e8/4lq', NOW()),
