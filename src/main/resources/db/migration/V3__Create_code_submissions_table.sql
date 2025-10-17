@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS code_submission (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code TEXT NOT NULL,
+    language VARCHAR(50) NOT NULL,
+    output TEXT,
+    error TEXT,
+    status VARCHAR(50),
+    execution_time DOUBLE,
+    memory_used DOUBLE,
+    is_correct BOOLEAN,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_id BIGINT,
+    problem_id BIGINT,
+    session_id VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (problem_id) REFERENCES problems(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_problem_id (problem_id),
+    INDEX idx_submitted_at (submitted_at)
+);

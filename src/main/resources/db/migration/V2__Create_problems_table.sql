@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS problems (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    difficulty ENUM('EASY', 'MEDIUM', 'HARD') DEFAULT 'EASY',
+    input TEXT,
+    output TEXT,
+    time_limit_ms INT DEFAULT 1000,
+    memory_limit_kb INT DEFAULT 64000,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
